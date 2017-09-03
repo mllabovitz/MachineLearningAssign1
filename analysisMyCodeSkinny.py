@@ -3,9 +3,9 @@
 import pandas as pd
 import numpy as np
 import datetime as dt
-import math
 import matplotlib.pyplot as plt
 """
+# used on local Machine
 import os
 retval = os.getcwd()
 print "Directory changed successfully: %s" % retval
@@ -31,7 +31,18 @@ def assess_portfolio(sd = dt.datetime(2008,1,1), ed = dt.datetime(2009,1,1), \
     sv=1000000, rfr=0.0, sf=252.0, \
     gen_plot=False):
 
-    
+    """
+    # echo print for test
+    print "SD: " + str(sd)
+    print "ED: " + str(ed)
+    print "Syms: " 
+    for p in syms: print p
+    print "Allocs: " + str(allocs)
+    print "SV: " + str(sv)
+    print "Risk Free Rate: " + str(rfr)
+    print "Trading days/Sampling Freq: " + str(sf)
+    print "Generate Plot: " + str(gen_plot)
+    """
 
     # Read in adjusted closing prices for given symbols, date range
     dates = pd.date_range(sd, ed)
@@ -43,6 +54,7 @@ def assess_portfolio(sd = dt.datetime(2008,1,1), ed = dt.datetime(2009,1,1), \
     allocsRawSum = sum(allocs)
     allocs = [x / allocsRawSum for x in allocs]
 
+    # print "Allocs after normalization: " + str(allocs)
 
     # Get daily portfolio value
     port_val = prices_SPY # add code here to compute daily portfolio values
@@ -62,7 +74,7 @@ def assess_portfolio(sd = dt.datetime(2008,1,1), ed = dt.datetime(2009,1,1), \
     daily_port_cr = cumulRetAllWgtd.sum(axis=1)
     daily_port_val = daily_port_cr*sv
 
-
+    
     #video method for daily return 
     dailyRet_2 = prices.copy()     
     dailyRet_2[1:] = (prices[1:]/prices[:-1].values) - 1    
@@ -71,24 +83,60 @@ def assess_portfolio(sd = dt.datetime(2008,1,1), ed = dt.datetime(2009,1,1), \
     dailyRet_2Wtg = dailyRet_2*allocsPD.values[0,:]
     dailyRet_2 = dailyRet_2Wtg.sum(axis=1)
     dailyRet_2 = dailyRet_2[1:]
- 
 
     # daily return for risk free rate
-    dailyRet_2LessRF = [x - rfr for x in dailyRet_2]
+    #dailyRet_2LessRF = [x - rfr for x in dailyRet_2]
 
 
-    # compute various means and volatility
-    # means
-    mean_daily_ret2 =  np.mean(dailyRet_2)
-    mean_daily_ret2_risk_free =  np.mean(dailyRet_2LessRF) 
+    # compute various means 
+    # means use pandas function pandas and numpy function give same results
+
+    #mean_daily_ret2_np =  np.mean(dailyRet_2)
+    mean_daily_ret2_pd =  dailyRet_2.mean()
+    # seems to be an adjustment needed
+    lenU = len(dailyRet_2)
+    adj_mean_daily_ret2= lenU*mean_daily_ret2_pd/(lenU-1)
+ 
+
+    # ignore risk free adjustment for present
+    #mean_daily_ret2_risk_free_np =  np.mean(dailyRet_2LessRF) 
+    #mean_daily_ret2_risk_free_pd =  dailyRet_2LessRF.mean() 
+
+    """
+  
+    #alternative video method for daily return 
+    # not used here
+    dailyRet_2_alt = (prices/prices.shift(1))-1
+    dailyRet_2_alt.ix[0,:] = 0
+    # for computing mean daily return
+    dailyRet_2_alt_for_mean = dailyRet_2_alt.ix[1:,:]
+    dailyRet_2_alt_wgtd_sum = (dailyRet_2_alt_for_mean*allocsPD.values[0,:]).sum()
+  
+    dailyRet_2_alt_col_mean = dailyRet_2_alt_for_mean.mean(axis=0) 
+    
+    dailyRet_2_alt_mean = (dailyRet_2_alt_col_mean*allocsPD.values[0,:]).sum() 
+
+    lenU = len(dailyRet_2_alt_for_mean)
+    adj_dailyRet_2_alt_mean = lenU*dailyRet_2_alt_mean/(lenU-1)
+
+    dailyRet_2 = dailyRet_2_alt_wgtd_sum[1:]
+    mean_daily_ret2_pd = adj_dailyRet_2_alt_mean
+    """
+
 
     # Sample volatility
-    stdev_daily_ret2 = np.std(dailyRet_2) #,ddof=1)
-    stdev_daily_ret2_risk_free = np.std(dailyRet_2LessRF) #,ddof=1)
+    # Ignore sample adjustment as well as RF adjustment for present 
+    # Use np function not pd function
+    stdev_daily_ret2_np = np.std(dailyRet_2) #,ddof=1)
+    #stdev_daily_ret2_risk_free_np = np.std(dailyRet_2LessRF) #,ddof=1)
+
+
+    stdev_daily_ret2_pd = dailyRet_2.std()
+    #stdev_daily_ret2_risk_free = dailyRet_2LessRF.std()
 
 
     # compute annualized sharpe ratio
-    sharpe =  math.sqrt(sf)*mean_daily_ret2_risk_free/stdev_daily_ret2_risk_free    
+    sharpe =  np.sqrt(sf)*adj_mean_daily_ret2/stdev_daily_ret2_np
     
 
 
@@ -97,16 +145,16 @@ def assess_portfolio(sd = dt.datetime(2008,1,1), ed = dt.datetime(2009,1,1), \
 
     # assign values to expected return
     crV = daily_port_cr [-1] - 1.0
-    #print "Cumulative Return: " + str(cr)
+    # print "Cumulative Return: " + str(crV)
 
     srV = sharpe
-    #print "Annulized Sharpe Ratio: " + str(sr)
+    # print "Annulized Sharpe Ratio: " + str(srV)
 
-    adrV = mean_daily_ret2
-    #print "Average Daily Return: " + str(adr)
+    adrV = adj_mean_daily_ret2
+    # print "Average Daily Return: " + str(adrV)
 
-    sddrV = stdev_daily_ret2 
-    #print "Standard Deviatn Daily Return: " + str(sddr)
+    sddrV = stdev_daily_ret2_np 
+    # print "Standard Deviatn Daily Return: " + str(sddrV)
 
 
     # Compare daily portfolio value with SPY using a normalized plot
@@ -137,26 +185,39 @@ def test_code():
     # Define input parameters
     # Note that ALL of these values will be set to different values by
     # the autograder!
-    start_date = dt.datetime(2010,1,1)
-    #start_date = dt.datetime(2010,6,1)
+    #start_date = dt.datetime(2010,1,1)
+    start_date = dt.datetime(2010,6,1)
+    sd = start_date
 
     end_date = dt.datetime(2010,12,31)
-    symbols = ['GOOG', 'AAPL', 'GLD', 'XOM']
-    allocations = [0.2, 0.3, 0.4, 0.1]
+    ed = end_date
+
+    symbols = ['GOOG', 'AAPL', 'GLD', 'XOM']  
     #symbols = ['AXP', 'HPQ', 'IBM', 'HNZ']
+    syms = symbols
+
+    allocations = [0.2, 0.3, 0.4, 0.1]
     #allocations = [0.0,0.0,0.0,1.0]
+    allocs = allocations
+
     start_val = 1000000  
+    sv = start_val
+
     risk_free_rate = 0.0
+    rfr = risk_free_rate
+
     sample_freq = 252
-    gen_plotV=False
+    sf = sample_freq
+
+    gen_plot=False
    
 
     # Assess the portfolio
     cr, adr, sddr, sr, ev = assess_portfolio(sd = start_date, ed = end_date,\
         syms = symbols, \
         allocs = allocations,\
-        sv = start_val, \
-        gen_plot = gen_plotV)
+        sv = start_val, rfr = risk_free_rate, \
+        gen_plot = gen_plot)
 
     # Print statistics
     print "Start Date:", start_date
